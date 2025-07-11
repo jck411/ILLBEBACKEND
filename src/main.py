@@ -60,13 +60,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     # Initialize MCP clients
     if config.mcp.enabled:
-        for server_config in config.mcp.servers:
-            try:
-                client = MCPClient(server_config)
-                await client.initialize()
-                mcp_clients.append(client)
-            except Exception as e:
-                print(f"Failed to initialize MCP server {server_config.name}: {e}")
+        # Always create at least one MCP client for local tools
+        if not config.mcp.servers:
+            # Create a dummy MCP client for local tools only
+            from src.models.config import MCPServerConfig
+
+            dummy_config = MCPServerConfig(
+                name="local",
+                url="http://localhost:0",  # Dummy URL, won't be used
+                transport="http",
+                timeout=30,
+                auth_token=None,
+                bind_localhost=True,
+            )
+            client = MCPClient(dummy_config)
+            # Don't initialize the dummy client (no remote server)
+            mcp_clients.append(client)
+        else:
+            for server_config in config.mcp.servers:
+                try:
+                    client = MCPClient(server_config)
+                    await client.initialize()
+                    mcp_clients.append(client)
+                except Exception as e:
+                    print(f"Failed to initialize MCP server {server_config.name}: {e}")
 
     # Initialize WebSocket server
     ws_server = WebSocketServer(config, openai_adapter, mcp_clients)

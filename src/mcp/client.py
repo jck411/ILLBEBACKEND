@@ -98,15 +98,62 @@ class MCPClient:
             raise
 
     async def get_tools(self) -> list[MCPTool]:
-        """Get available tools from the server.
+        """Get available tools from the server and local registry.
 
         Returns:
-            List of available tools
+            List of available tools combining local and remote tools
         """
-        if not self._capabilities:
-            await self.initialize()
+        from src.mcp.tools import ToolRegistry
 
-        return self._capabilities.tools if self._capabilities else []
+        # Get local tools
+        local_tools = ToolRegistry.get_tools()
+
+        # If not connected to remote MCP, just return local tools
+        if not self._capabilities:
+            return local_tools
+
+        # Combine local and remote tools
+        remote_tools = self._capabilities.tools if self._capabilities else []
+
+        # Create a dict to deduplicate tools by name (local tools take precedence)
+        tools_dict = {tool.name: tool for tool in remote_tools}
+        for tool in local_tools:
+            tools_dict[tool.name] = tool
+
+        return list(tools_dict.values())
+
+    async def execute_tool(self, tool_call: MCPToolCall) -> MCPToolResult:
+        """Execute a tool call using local tools or remote MCP servers.
+
+        Args:
+            tool_call: Tool call request
+
+        Returns:
+            Tool execution result
+        """
+        from src.mcp.tools import ToolRegistry
+
+        # Try local tools first
+        tool_handler = ToolRegistry.get_tool(tool_call.name)
+        if tool_handler:
+            self.logger.info(
+                "mcp_executing_local_tool",
+                tool=tool_call.name,
+                arguments=tool_call.arguments,
+                server=self.config.name,
+            )
+            return await tool_handler.execute(tool_call)
+
+        # If not a local tool, try remote MCP server
+        self.logger.info(
+            "mcp_executing_remote_tool",
+            tool=tool_call.name,
+            arguments=tool_call.arguments,
+            server=self.config.name,
+        )
+
+        # Call the remote tool
+        return await self.call_tool(tool_call)
 
     async def call_tool(self, tool_call: MCPToolCall) -> MCPToolResult:
         """Execute a tool call.

@@ -157,17 +157,58 @@ class WebSocketServer:
             client_id: Client identifier
         """
         try:
-            # Get available tools from MCP servers
+            # Get available tools from MCP servers and local tools
             tools = []
             if self.config.mcp.enabled:
+                # Get tools from remote MCP servers
                 for client in self.mcp_clients:
                     tools.extend(client.to_openai_tools())
+
+                # Get local tools and add them to the tools list
+                if self.mcp_clients:
+                    # Use the first client to get combined tools (includes local)
+                    combined_tools = await self.mcp_clients[0].get_tools()
+                    for tool in combined_tools:
+                        # Check if this is a local tool
+                        # (not already added by to_openai_tools)
+                        if not any(
+                            openai_tool["function"]["name"].endswith(f"_{tool.name}")
+                            for openai_tool in tools
+                        ):
+                            # Add local tool directly
+                            tools.append(
+                                {
+                                    "type": "function",
+                                    "function": {
+                                        "name": tool.name,
+                                        "description": tool.description,
+                                        "parameters": tool.input_schema,
+                                    },
+                                }
+                            )
+                else:
+                    # No MCP clients, get local tools directly
+                    from src.mcp.tools import ToolRegistry
+
+                    local_tools = ToolRegistry.get_tools()
+                    for tool in local_tools:
+                        tools.append(
+                            {
+                                "type": "function",
+                                "function": {
+                                    "name": tool.name,
+                                    "description": tool.description,
+                                    "parameters": tool.input_schema,
+                                },
+                            }
+                        )
 
             # Generate response from LLM
             async for response in self.llm_adapter.generate_response(
                 message=message.payload.text,
                 request_id=message.request_id,
                 tools=tools if tools else None,
+                use_mcp=bool(tools),  # Enable MCP if we have tools
             ):
                 # Send response chunk
                 await websocket.send_text(response.model_dump_json())
