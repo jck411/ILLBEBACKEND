@@ -1,6 +1,6 @@
 # Server Configuration
 server:
-  host: "0.0.0.0"
+  host: "127.0.0.1"  # SECURITY: Bind to localhost only, not all interfaces
   port: 8000
   cors_origins:
     - "http://localhost:3000"
@@ -24,12 +24,14 @@ openai:
 mcp:
   enabled: true
   servers: []
-  # Example server configuration:
+  # Example server configuration following 2025 best practices:
   # servers:
   #   - name: "example-server"
-  #     url: "http://localhost:3000"
-  #     transport: "http"
+  #     url: "http://127.0.0.1:3000"  # Localhost only for security
+  #     transport: "streamable-http"   # Modern transport
   #     timeout: 30
+  #     auth_token: "${MCP_AUTH_TOKEN}"  # Optional authentication
+  #     bind_localhost: true           # Security enforcement
 
 # Logging Configuration
 logging:

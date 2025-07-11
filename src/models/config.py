@@ -54,8 +54,15 @@ class MCPServerConfig(BaseModel):
 
     name: str = Field(..., description="Server name")
     url: str = Field(..., description="Server URL")
-    transport: str = Field(default="http", description="Transport protocol")
+    transport: str = Field(
+        default="streamable-http",
+        description="Transport protocol (streamable-http, stdio)",
+    )
     timeout: int = Field(default=30, gt=0, description="Request timeout in seconds")
+    auth_token: str | None = Field(None, description="Optional authentication token")
+    bind_localhost: bool = Field(
+        default=True, description="Bind to localhost only for security"
+    )
 
 
 class MCPConfig(BaseModel):

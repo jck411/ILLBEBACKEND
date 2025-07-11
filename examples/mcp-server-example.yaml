@@ -1,23 +1,28 @@
-# Example MCP server configuration
+# Example MCP server configuration following 2025 best practices
 # Add this to the mcp.servers section in config.yaml
 
 mcp:
   enabled: true
   servers:
     - name: "weather"
-      url: "http://localhost:3001"
-      transport: "http"
+      url: "http://127.0.0.1:3001"  # SECURITY: Use 127.0.0.1, not localhost
+      transport: "streamable-http"   # Modern transport with SSE support
       timeout: 30
+      auth_token: "${WEATHER_MCP_TOKEN}"  # Optional auth from env var
+      bind_localhost: true
 
     - name: "calculator"
-      url: "http://localhost:3002"
-      transport: "http"
+      url: "http://127.0.0.1:3002"
+      transport: "streamable-http"
       timeout: 15
+      bind_localhost: true
 
     - name: "web-search"
-      url: "http://localhost:3003"
-      transport: "http"
+      url: "http://127.0.0.1:3003"
+      transport: "streamable-http"
       timeout: 45
+      auth_token: "${SEARCH_MCP_TOKEN}"
+      bind_localhost: true
 
 # Example of what an MCP server should implement:
 #

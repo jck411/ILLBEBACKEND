@@ -38,6 +38,8 @@ packages = ["src"]
 [tool.ruff]
 line-length = 88
 target-version = "py313"
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings

@@ -28,11 +28,33 @@ class MCPClient:
         """
         self.config = server_config
         self.logger = get_logger(__name__)
+
+        # Prepare headers for authentication and security
+        headers = {"Content-Type": "application/json"}
+        if server_config.auth_token:
+            headers["Authorization"] = f"Bearer {server_config.auth_token}"
+
+        # Validate URL for security
+        if server_config.bind_localhost and not (
+            server_config.url.startswith("http://127.0.0.1")
+            or server_config.url.startswith("http://localhost")
+            or server_config.url.startswith("https://127.0.0.1")
+            or server_config.url.startswith("https://localhost")
+        ):
+            self.logger.warning(
+                "mcp_security_warning",
+                server=server_config.name,
+                url=server_config.url,
+                message="Non-localhost URL with bind_localhost=True",
+            )
+
         self.client = httpx.AsyncClient(
             base_url=server_config.url,
             timeout=server_config.timeout,
+            headers=headers,
         )
         self._capabilities: MCPCapabilities | None = None
+        self._session_id: str | None = None
 
     async def initialize(self) -> None:
         """Initialize connection to MCP server."""
@@ -41,7 +63,7 @@ class MCPClient:
             response = await self._send_request(
                 method="initialize",
                 params={
-                    "protocolVersion": "1.0",
+                    "protocolVersion": "2024-11-05",  # Updated to current MCP version
                     "clientInfo": {
                         "name": "llm-backend",
                         "version": "0.1.0",
@@ -149,12 +171,26 @@ class MCPClient:
             id=str(uuid.uuid4()),
         )
 
+        # Prepare headers for session management
+        headers = {"Content-Type": "application/json"}
+        if self._session_id:
+            headers["Mcp-Session-Id"] = self._session_id
+
         response = await self.client.post(
             "/",
             json=request.model_dump(exclude_none=True),
-            headers={"Content-Type": "application/json"},
+            headers=headers,
         )
         response.raise_for_status()
+
+        # Check for session ID in response headers
+        if "Mcp-Session-Id" in response.headers:
+            self._session_id = response.headers["Mcp-Session-Id"]
+            self.logger.info(
+                "mcp_session_established",
+                server=self.config.name,
+                session_id=self._session_id,
+            )
 
         return MCPResponse(**response.json())
 
