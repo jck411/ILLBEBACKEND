@@ -1,0 +1,33 @@
+# Example MCP server configuration
+# Add this to the mcp.servers section in config.yaml
+
+mcp:
+  enabled: true
+  servers:
+    - name: "weather"
+      url: "http://localhost:3001"
+      transport: "http"
+      timeout: 30
+
+    - name: "calculator"
+      url: "http://localhost:3002"
+      transport: "http"
+      timeout: 15
+
+    - name: "web-search"
+      url: "http://localhost:3003"
+      transport: "http"
+      timeout: 45
+
+# Example of what an MCP server should implement:
+#
+# 1. Initialize endpoint:
+#    POST / with {"jsonrpc": "2.0", "method": "initialize", "params": {...}, "id": "..."}
+#
+# 2. List tools endpoint:
+#    POST / with {"jsonrpc": "2.0", "method": "tools/list", "id": "..."}
+#    Response: {"jsonrpc": "2.0", "result": {"tools": [...]}, "id": "..."}
+#
+# 3. Call tool endpoint:
+#    POST / with {"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "...", "arguments": {...}}, "id": "..."}
+#    Response: {"jsonrpc": "2.0", "result": {...}, "id": "..."}
